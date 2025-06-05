@@ -17,40 +17,42 @@ const Payroll = sequelize.define('Payroll', {
     field: 'employee_id'
     // ການອ້າງອີງຈະຖືກກຳນົດຫຼັງຈາກສ້າງໂມເດວ Employee
   },
-  amount: {
-    type: DataTypes.DECIMAL(10, 2),
+  employee_id: {
+    type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'amount'
+    field: 'employee_id'
   },
-  social_date: {
-    type: DataTypes.DECIMAL(10, 2),
+  
+  special_allowance_id: {
+    type: DataTypes.INTEGER,
     allowNull: true,
-    field: 'social_date'
-  },
-  tax: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: false,
-    field: 'tax'
-  },
-  payment_date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false,
-    field: 'payment_date'
+    field: 'special_allowance_id'
+    // ການອ້າງອີງຈະຖືກກຳນົດຫຼັງຈາກສ້າງໂມເດວ SpecialAllowance
   },
   base_salary: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     field: 'base_salary'
   },
-  hard_work_money: {
+  cut_money: {
     type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    field: 'hard_work_money'
+    allowNull: false,
+    field: 'cut_money'
+  },
+  net_salary: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    field: 'net_salary'
+  },
+  payment_date: {
+    type: DataTypes.DATEONLY,
+    allowNull: false,
+    field: 'payment_date'
   }
 }, {
   tableName: 'payroll',
   timestamps: true
 });
 
-Payroll.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+// Payroll.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
 module.exports = Payroll;

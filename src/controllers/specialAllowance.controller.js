@@ -4,11 +4,9 @@ const { SpecialAllowance, Employee } = require('../models');
 // Create a new special allowance record
 const createSpecialAllowance = async (req, res) => {
   try {
-    const { employee_id, amount, food_money } = req.body;
+    const { employee_id,tigh_money, bonus_money, food_money,ot } = req.body;
     const specialAllowance = await SpecialAllowance.create({
-      employee_id,
-      amount,
-      food_money
+      employee_id,tigh_money, bonus_money, food_money,ot
     });
     return res.status(201).json(specialAllowance);
   } catch (error) {
@@ -50,7 +48,7 @@ const updateSpecialAllowance = async (req, res) => {
   try {
     const { id } = req.params;
     const parsedId = parseInt(id, 10);
-    const { employee_id, amount, food_money } = req.body;
+    const { employee_id,tigh_money, bonus_money, food_money,ot } = req.body;
 
     const specialAllowance = await SpecialAllowance.findByPk(parsedId);
     if (!specialAllowance) {
@@ -58,9 +56,7 @@ const updateSpecialAllowance = async (req, res) => {
     }
 
     await specialAllowance.update({
-      employee_id,
-      amount,
-      food_money
+      employee_id,tigh_money, bonus_money, food_money,ot
     });
     return res.status(200).json(specialAllowance);
   } catch (error) {

@@ -30,11 +30,6 @@ const Attendance = sequelize.define('Attendance', {
     type: DataTypes.DATEONLY,
     allowNull: false,
     field: 'date'
-  },
-  status: {
-    type: DataTypes.DECIMAL(10, 2),
-    allowNull: true,
-    field: 'status'
   }
 }, {
   tableName: 'attendance',

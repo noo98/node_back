@@ -4,13 +4,12 @@ const { Attendance, Employee } = require('../models');
 // Create a new attendance record
 const createAttendance = async (req, res) => {
   try {
-    const { employee_id, check_in_time, check_out_time, date, status } = req.body;
+    const { employee_id, check_in_time, check_out_time, date } = req.body;
     const attendance = await Attendance.create({
       employee_id,
       check_in_time,
       check_out_time,
-      date,
-      status
+      date
     });
     return res.status(201).json(attendance);
   } catch (error) {
@@ -50,7 +49,7 @@ const updateAttendance = async (req, res) => {
   try {
     const { id } = req.params;
     const parsedId = parseInt(id, 10);
-    const { employee_id, check_in_time, check_out_time, date, status } = req.body;
+    const { employee_id, check_in_time, check_out_time, date } = req.body;
 
     const attendance = await Attendance.findByPk(parsedId);
     if (!attendance) {
@@ -61,8 +60,7 @@ const updateAttendance = async (req, res) => {
       employee_id,
       check_in_time,
       check_out_time,
-      date,
-      status
+      date
     });
     return res.status(200).json(attendance);
   } catch (error) {
