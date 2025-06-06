@@ -17,15 +17,25 @@ const SpecialAllowance = sequelize.define('SpecialAllowance', {
     field: 'employee_id'
     // ການອ້າງອີງຈະຖືກກຳນົດຫຼັງຈາກສ້າງໂມເດວ Employee
   },
-  amount: {
+  bonus_money: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    field: 'amount'
+    field: 'bonus_money'
+  },
+    tigh_money: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    field: 'tigh_money'
   },
   food_money: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
     field: 'food_money'
+  },
+  ot: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    field: 'ot'
   }
 }, {
   tableName: 'special_allowance',

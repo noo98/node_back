@@ -4,15 +4,9 @@ const { Payroll, Employee } = require('../models');
 // Create a new payroll record
 const createPayroll = async (req, res) => {
   try {
-    const { employee_id, amount, social_date, tax, payment_date, base_salary, hard_work_money } = req.body;
+    const { employee_id,special_allowance_id,base_salary,cut_money,net_salary, payment_date } = req.body;
     const payroll = await Payroll.create({
-      employee_id,
-      amount,
-      social_date,
-      tax,
-      payment_date,
-      base_salary,
-      hard_work_money
+      employee_id,special_allowance_id,base_salary,cut_money,net_salary, payment_date
     });
     return res.status(201).json(payroll);
   } catch (error) {
@@ -52,7 +46,7 @@ const updatePayroll = async (req, res) => {
   try {
     const { id } = req.params;
     const parsedId = parseInt(id, 10);
-    const { employee_id, amount, social_date, tax, payment_date, base_salary, hard_work_money } = req.body;
+    const {employee_id,special_allowance_id,base_salary,cut_money,net_salary, payment_date } = req.body;
 
     const payroll = await Payroll.findByPk(parsedId);
     if (!payroll) {
@@ -60,13 +54,7 @@ const updatePayroll = async (req, res) => {
     }
 
     await payroll.update({
-      employee_id,
-      amount,
-      social_date,
-      tax,
-      payment_date,
-      base_salary,
-      hard_work_money
+      employee_id,special_allowance_id,base_salary,cut_money,net_salary, payment_date
     });
     return res.status(200).json(payroll);
   } catch (error) {
