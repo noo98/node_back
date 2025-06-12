@@ -2,6 +2,7 @@
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../db/connection');
 const Employee = require('./Employee');
+const SpecialAllowance = require('./SpecialAllowance');
 
 const Payroll = sequelize.define('Payroll', {
   payroll_id: {
@@ -14,20 +15,13 @@ const Payroll = sequelize.define('Payroll', {
   employee_id: {
     type: DataTypes.INTEGER,
     allowNull: false,
-    field: 'employee_id'
-    // ການອ້າງອີງຈະຖືກກຳນົດຫຼັງຈາກສ້າງໂມເດວ Employee
-  },
-  employee_id: {
-    type: DataTypes.INTEGER,
-    allowNull: false,
+    unique: true,
     field: 'employee_id'
   },
-  
   special_allowance_id: {
     type: DataTypes.INTEGER,
     allowNull: true,
     field: 'special_allowance_id'
-    // ການອ້າງອີງຈະຖືກກຳນົດຫຼັງຈາກສ້າງໂມເດວ SpecialAllowance
   },
   base_salary: {
     type: DataTypes.DECIMAL(10, 2),
@@ -54,5 +48,8 @@ const Payroll = sequelize.define('Payroll', {
   timestamps: true
 });
 
-// Payroll.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+// Define associations
+Payroll.belongsTo(Employee, { foreignKey: 'employee_id', as: 'employee' });
+Payroll.belongsTo(SpecialAllowance, { foreignKey: 'special_allowance_id', as: 'specialAllowance' });
+
 module.exports = Payroll;

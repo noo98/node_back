@@ -54,6 +54,7 @@ router.delete('/employees/:id', employeeController.deleteEmployee);
 router.post('/attendances', attendanceController.createAttendance);
 router.get('/attendances', attendanceController.getAllAttendances);
 router.get('/attendances/:id', attendanceController.getAttendanceById);
+router.get('/attendances/emp/:employee_id', attendanceController.getAttendanceByEmployeeId);
 router.put('/attendances/:id', attendanceController.updateAttendance);
 router.delete('/attendances/:id', attendanceController.deleteAttendance);
 
@@ -62,6 +63,8 @@ router.get('/payrolls', payrollController.getAllPayrolls);
 router.get('/payrolls/:id', payrollController.getPayrollById);
 router.put('/payrolls/:id', payrollController.updatePayroll);
 router.delete('/payrolls/:id', payrollController.deletePayroll);
+router.post('/payrolls/calculate', payrollController.handleCalculatePayroll); 
+router.get('/cal_payrolls/:employeeId', payrollController.getPayrollByEmployeeId);
 
 router.post('/special-allowances', specialAllowanceController.createSpecialAllowance);
 router.get('/special-allowances', specialAllowanceController.getAllSpecialAllowances);
@@ -98,5 +101,8 @@ router.get('/base_salary',baseSalaryController.getAllBaseSalary);
 router.get('/base_salary/:id',baseSalaryController.getAllBaseSalaryById);
 router.put('/base_salary/:id',baseSalaryController.updateBaseSalary);
 router.delete('/base_salary/:id',baseSalaryController.deleteBaseSalary);
+
+router.post('cal_Payroll/calculate', payrollController.handleCalculatePayroll); 
+router.get('Payroll/:employeeId', payrollController.getPayrollByEmployeeId);
 
 module.exports = router;

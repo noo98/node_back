@@ -30,7 +30,17 @@ const Attendance = sequelize.define('Attendance', {
     type: DataTypes.DATEONLY,
     allowNull: false,
     field: 'date'
-  }
+  },
+  late: {
+  type: DataTypes.BOOLEAN,
+  defaultValue: false,
+  field: 'late'
+},
+  penalty_amount: {
+    type: DataTypes.INTEGER,
+    allowNull: true,
+    field: 'penalty_amount'
+ }
 }, {
   tableName: 'attendance',
   timestamps: true
