@@ -1,80 +1,61 @@
 // src/models/index.js
+const fs = require('fs');
+const path = require('path');
 const { sequelize, Sequelize } = require('../db/connection');
+const db = {};
 
-// ນຳເຂົ້າໂມເດວຕ່າງໆ
-const EmployeeWorkSchedule = require('./EmployeeWorkSchedule');
-const Position = require('./Position');
-const Employee = require('./Employee');
-const Attendance = require('./Attendance');
-const SpecialAllowance = require('./SpecialAllowance');
-const Payroll = require('./Payroll');
-const MainMenu = require('./main_menu');
-const SubMenu = require('./SubMenu');
-const User = require('./User');
-const Role = require('./Role');
-const RolePermission = require('./RolePermission');
-const UserSession = require('./UserSession');
-const UserPermission = require('./UserPermission');
-const BaseSalary = require('./BaseSalary');
+fs.readdirSync(__dirname)
+  .filter(file => {
+    return (file.indexOf('.') !== 0) && (file !== 'index.js') && (file.slice(-3) === '.js');
+  })
+  .forEach(file => {
+    const model = require(path.join(__dirname, file));
+    db[model.name] = model;
+  });
 
+Object.keys(db).forEach(modelName => {
+  if (db[modelName].associate) {
+    db[modelName].associate(db);
+  }
+});
 
-// ກຳນົດຄວາມສຳພັນ
-// 1. ຄວາມສຳພັນຂອງ Position
-Position.hasMany(Employee, { foreignKey: 'position_id' });
-Employee.belongsTo(Position, { foreignKey: 'position_id' });
+// ກຳນົດຄວາມສຳພັນດ້ວຍຕົວປ່ຽນ db
+db.Position.hasMany(db.Employee, { foreignKey: 'position_id' });
+db.Employee.belongsTo(db.Position, { foreignKey: 'position_id' });
 
-MainMenu.hasMany(SubMenu, { foreignKey: 'main_id' });
-SubMenu.belongsTo(MainMenu, { foreignKey: 'main_id' });
+db.MainMenu.hasMany(db.SubMenu, { foreignKey: 'main_id', as: 'children' });
+db.SubMenu.belongsTo(db.MainMenu, { foreignKey: 'main_id' });
 
-EmployeeWorkSchedule.hasMany(Employee, { foreignKey: 'schedule_id' });
-Employee.belongsTo(EmployeeWorkSchedule, { foreignKey: 'schedule_id' });
+db.EmployeeWorkSchedule.hasMany(db.Employee, { foreignKey: 'schedule_id' });
+db.Employee.belongsTo(db.EmployeeWorkSchedule, { foreignKey: 'schedule_id' });
 
-User.belongsTo(Employee, { foreignKey: 'employee_id' });
-Employee.hasOne(User, { foreignKey: 'employee_id' });
+db.Employee.hasOne(db.User, { foreignKey: 'employee_id' });
+db.User.belongsTo(db.Employee, { foreignKey: 'employee_id' });
 
-Employee.hasMany(Attendance, { foreignKey: 'employee_id' });
-Attendance.belongsTo(Employee, { foreignKey: 'employee_id' });
+db.Employee.hasMany(db.Attendance, { foreignKey: 'employee_id' });
+db.Attendance.belongsTo(db.Employee, { foreignKey: 'employee_id' });
 
-// 4. ຄວາມສຳພັນຂອງ SpecialAllowance
-Employee.hasMany(SpecialAllowance, { foreignKey: 'employee_id' });
-SpecialAllowance.belongsTo(Employee, { foreignKey: 'employee_id' });
+db.Employee.hasMany(db.SpecialAllowance, { foreignKey: 'employee_id', as: 'specialAllowances' }); // ກຳນົດ alias
+db.SpecialAllowance.belongsTo(db.Employee, { foreignKey: 'employee_id' });
 
-// 5. ຄວາມສຳພັນຂອງ Payroll
-Employee.hasMany(Payroll, { foreignKey: 'employee_id' });
-Payroll.belongsTo(Employee, { foreignKey: 'employee_id' });
-User.hasMany(UserSession, { foreignKey: 'user_id' });
-UserSession.belongsTo(User, { foreignKey: 'user_id' });
+db.Employee.hasMany(db.Payroll, { foreignKey: 'employee_id' });
+db.Payroll.belongsTo(db.Employee, { foreignKey: 'employee_id' });
 
-User.hasMany(UserPermission, { foreignKey: 'user_id' });
-UserPermission.belongsTo(User, { foreignKey: 'user_id' });
+db.User.hasMany(db.UserSession, { foreignKey: 'user_id' });
+db.UserSession.belongsTo(db.User, { foreignKey: 'user_id' });
 
-Role.hasMany(RolePermission, { foreignKey: 'role_id' });
-RolePermission.belongsTo(Role, { foreignKey: 'role_id' });
+db.User.hasMany(db.UserPermission, { foreignKey: 'user_id' });
+db.UserPermission.belongsTo(db.User, { foreignKey: 'user_id' });
 
-SubMenu.hasMany(RolePermission, { foreignKey: 'sub_id' });
-RolePermission.belongsTo(SubMenu, { foreignKey: 'sub_id' });
+db.Role.hasMany(db.RolePermission, { foreignKey: 'role_id' });
+db.RolePermission.belongsTo(db.Role, { foreignKey: 'role_id' });
 
-SubMenu.belongsTo(MainMenu, { foreignKey: 'main_id' });
-MainMenu.hasMany(SubMenu, { foreignKey: 'main_id' });
+db.SubMenu.hasMany(db.RolePermission, { foreignKey: 'sub_id' });
+db.RolePermission.belongsTo(db.SubMenu, { foreignKey: 'sub_id' });
 
-MainMenu.hasMany(SubMenu, { foreignKey: 'main_id', as: 'children' });
-SubMenu.belongsTo(MainMenu, { foreignKey: 'main_id' });
+db.Position.belongsTo(db.BaseSalary, { foreignKey: 'base_sal_id', as: 'baseSalary' });
 
-module.exports = {
-  sequelize,
-  Sequelize,
-  EmployeeWorkSchedule,
-  Position,
-  Employee,
-  Attendance,
-  SpecialAllowance,
-  Payroll,
-  User,
-  UserSession,
-  UserPermission,
-  MainMenu,
-  SubMenu,
-  Role,
-  RolePermission,
-  BaseSalary
-};
+db.sequelize = sequelize;
+db.Sequelize = Sequelize;
+
+module.exports = db;

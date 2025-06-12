@@ -22,3 +22,4 @@ const BaseSalary = sequelize.define('BaseSalary', {
 });
 
 module.exports = BaseSalary;
+
