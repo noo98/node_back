@@ -1,3 +1,4 @@
+// controllers/payroll.controller.js
 const { calculatePayroll } = require('../services/calculatePayroll');
 const { Payroll, Employee, SpecialAllowance } = require('../models');
 
@@ -96,10 +97,10 @@ const deletePayroll = async (req, res) => {
   }
 };
 
-// Calculate payroll for an employee
+// controllers/payroll.controller.js (ສ່ວນ handleCalculatePayroll)
 const handleCalculatePayroll = async (req, res) => {
   try {
-    const { employeeId, paymentDate } = req.body;
+    const { employeeId, paymentDate, baseSalary, bonusMoney, tighMoney, foodMoney, ot, cutMoney } = req.body;
 
     if (!employeeId || isNaN(employeeId)) {
       return res.status(400).json({ status: 'error', message: 'Invalid or missing employeeId' });
@@ -110,7 +111,14 @@ const handleCalculatePayroll = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Employee not found' });
     }
 
-    const payrollResult = await calculatePayroll(employeeId, paymentDate);
+    const payrollResult = await calculatePayroll(employeeId, paymentDate, {
+      baseSalary,
+      bonusMoney,
+      tighMoney,
+      foodMoney,
+      ot,
+      cutMoney,
+    });
     return res.status(200).json({ status: 'success', data: payrollResult });
   } catch (error) {
     console.error('Error in calculatePayroll:', error);
