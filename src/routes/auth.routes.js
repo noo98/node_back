@@ -102,7 +102,7 @@ router.get('/base_salary/:id',baseSalaryController.getAllBaseSalaryById);
 router.put('/base_salary/:id',baseSalaryController.updateBaseSalary);
 router.delete('/base_salary/:id',baseSalaryController.deleteBaseSalary);
 
-router.post('cal_Payroll/calculate', payrollController.handleCalculatePayroll); 
-router.get('Payroll/:employeeId', payrollController.getPayrollByEmployeeId);
+// router.post('cal_Payroll/calculate', payrollController.handleCalculatePayroll); 
+// router.get('Payroll/:employeeId', payrollController.getPayrollByEmployeeId);
 
 module.exports = router;
