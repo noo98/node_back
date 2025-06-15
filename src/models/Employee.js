@@ -54,8 +54,5 @@ const Employee = sequelize.define('Employee', {
   updatedAt: 'updatedAt'
 });
 
-// Define associations
-Employee.belongsTo(EmployeeSchedule, { foreignKey: 'schedule_id', as: 'schedule' });
-Employee.belongsTo(Position, { foreignKey: 'position_id', as: 'position' });
 
 module.exports = Employee;

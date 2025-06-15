@@ -63,8 +63,9 @@ router.get('/payrolls', payrollController.getAllPayrolls);
 router.get('/payrolls/:id', payrollController.getPayrollById);
 router.put('/payrolls/:id', payrollController.updatePayroll);
 router.delete('/payrolls/:id', payrollController.deletePayroll);
-router.post('/payrolls/calculate', payrollController.handleCalculatePayroll); 
-router.get('/payrolls_emp/:employeeId', payrollController.getPayrollByEmployeeId);
+router.post('/cal_payrolls', payrollController.handleCalculatePayroll); 
+router.get('/cal_payrolls/:employeeId', payrollController.getPayrollByEmployeeId);
+router.get('/payrolls_total_ot', payrollController.getAllEmployeeOtForLastMonth);
 
 router.post('/special-allowances', specialAllowanceController.createSpecialAllowance);
 router.get('/special-allowances', specialAllowanceController.getAllSpecialAllowances);

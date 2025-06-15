@@ -1,6 +1,7 @@
 // src/models/Position.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../db/connection');
+const BaseSalary = require('./BaseSalary');
 
 const Position = sequelize.define('Position', { 
   position_id: {
@@ -14,6 +15,11 @@ const Position = sequelize.define('Position', {
     type: DataTypes.STRING(100),
     allowNull: false,
     field: 'position_name'
+  },
+  rate_ot: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: false,
+    field: 'rate_ot' // ຄ່າ OT ຕໍ່ຊົ່ວໂມງ (e.g., 50,000.00)
   },
   base_sal_id: {
     type: DataTypes.INTEGER,

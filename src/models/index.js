@@ -26,8 +26,16 @@ db.Employee.belongsTo(db.Position, { foreignKey: 'position_id' });
 db.MainMenu.hasMany(db.SubMenu, { foreignKey: 'main_id', as: 'children' });
 db.SubMenu.belongsTo(db.MainMenu, { foreignKey: 'main_id' });
 
+db.Position.hasMany(db.Employee, { foreignKey: 'position_id' });
+db.Employee.belongsTo(db.Position, { foreignKey: 'position_id', as: 'position' });
+
+// ... (ສ່ວນອື່ນໆຍັງເປັນເຫມືອນເກົ່າ)
+
+
 db.EmployeeWorkSchedule.hasMany(db.Employee, { foreignKey: 'schedule_id' });
-db.Employee.belongsTo(db.EmployeeWorkSchedule, { foreignKey: 'schedule_id' });
+db.Employee.belongsTo(db.EmployeeWorkSchedule, { foreignKey: 'schedule_id', as: 'schedule' });
+
+// ... (ສ່ວນອື່ນໆຍັງເປັນເຫມືອນເກົ່າ)
 
 db.Employee.hasOne(db.User, { foreignKey: 'employee_id' });
 db.User.belongsTo(db.Employee, { foreignKey: 'employee_id' });
@@ -53,6 +61,7 @@ db.RolePermission.belongsTo(db.Role, { foreignKey: 'role_id' });
 db.SubMenu.hasMany(db.RolePermission, { foreignKey: 'sub_id' });
 db.RolePermission.belongsTo(db.SubMenu, { foreignKey: 'sub_id' });
 
+db.BaseSalary.hasMany(db.Position, { foreignKey: 'base_sal_id' });
 db.Position.belongsTo(db.BaseSalary, { foreignKey: 'base_sal_id', as: 'baseSalary' });
 
 db.sequelize = sequelize;

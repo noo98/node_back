@@ -1,86 +1,141 @@
-// src/services/calculatePayroll.js
 const { Op } = require('sequelize');
 const Employee = require('../models/Employee');
 const Position = require('../models/Position');
 const BaseSalary = require('../models/BaseSalary');
 const SpecialAllowance = require('../models/SpecialAllowance');
 const Payroll = require('../models/Payroll');
+const Attendance = require('../models/Attendance');
 
-// ຟັງຊັນເພື່ອຄຳນວນແລະບັນທຶກເງິນເດືອນສຸດທິ
 async function calculatePayroll(employeeId, paymentDate, payrollData) {
   try {
-    const { baseSalary, bonusMoney, tighMoney, foodMoney, ot, cutMoney } = payrollData;
+    const { bonusMoney, tighMoney } = payrollData || {}; // ບໍ່ຮັບ foodMoney ຈາກ input
 
-    // ກວດສອບຂໍ້ມູນພະນັກງານ
-    const employee = await Employee.findByPk(employeeId);
+    const employee = await Employee.findByPk(employeeId, {
+      include: [
+        {
+          model: Position,
+          as: 'position',
+          include: [{ model: BaseSalary, as: 'baseSalary' }],
+        },
+        {
+          model: SpecialAllowance,
+          as: 'specialAllowances',
+        },
+      ],
+    });
+
     if (!employee) {
       throw new Error('Employee not found');
     }
 
-    // ກຳນົດເດືອນຈາກ paymentDate
-    const paymentMonth = new Date(paymentDate).toISOString().slice(0, 7); // e.g., "2025-06"
+    let baseSalary = 0;
+    if (employee.position && employee.position.baseSalary && employee.position.baseSalary.salary) {
+      baseSalary = parseFloat(employee.position.baseSalary.salary);
+    } else {
+      console.warn('BaseSalary not found for employee ID:', employeeId, 'using default value 0');
+    }
 
-    // ຊອກຫາ SpecialAllowance ທີ່ຕົງກັບເດືອນ ແລະ employee_id
+    let validPaymentDate = new Date(paymentDate);
+    if (isNaN(validPaymentDate.getTime())) {
+      console.warn('Invalid paymentDate, using current date:', paymentDate);
+      validPaymentDate = new Date();
+    }
+    const paymentMonth = validPaymentDate.toISOString().slice(0, 7);
+
+    const specialAllowances = await SpecialAllowance.findAll({
+      where: {
+        employee_id: employeeId,
+        created_at: {
+          [Op.gte]: new Date(`${paymentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1)),
+        },
+      },
+    });
+    const totalOt = specialAllowances.reduce((sum, allowance) => sum + parseFloat(allowance.ot || 0), 0);
+    console.log('Total OT:', totalOt);
+
+    const attendances = await Attendance.findAll({
+      where: {
+        employee_id: employeeId,
+        date: {
+          [Op.gte]: new Date(`${paymentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1)),
+        },
+      },
+      attributes: ['date'], // ເລືອກພຽງ date ເພື່ອຫຼີກບັນທຶກຂໍ້ມູນເສຍເວລາ
+      group: ['date'], // ລວມວັນທີ່ທີ່ແຕກຕ່າງກັນ
+    });
+    const uniqueDays = attendances.length; // ຈໍານວນເວລາທີ່ມີ check-in ແຕ່ລະວັນ
+    const foodMoney = uniqueDays * 30000; // ຄຳນວນ food_money ທີ່ຖືກຕ້ອງ (30,000 ກີບຕໍ່ມື້)
+    console.log('Calculated Food Money:', foodMoney);
+
+    const attendancesForPenalty = await Attendance.findAll({
+      where: {
+        employee_id: employeeId,
+        date: {
+          [Op.gte]: new Date(`${paymentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1)),
+        },
+      },
+    });
+    const totalPenalty = attendancesForPenalty.reduce((sum, attendance) => sum + parseFloat(attendance.penalty_amount || 0), 0);
+    console.log('Total Penalty:', totalPenalty);
+
     let specialAllowance = await SpecialAllowance.findOne({
       where: {
         employee_id: employeeId,
         created_at: {
           [Op.gte]: new Date(`${paymentMonth}-01`),
-          [Op.lt]: new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1),
+          [Op.lt]: new Date(new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1)),
         },
       },
     });
 
-    // ຖ້າບໍ່ມີ, ສ້າງໃໝ່
     if (!specialAllowance) {
       specialAllowance = await SpecialAllowance.create({
         employee_id: employeeId,
         bonus_money: bonusMoney || 0,
         tigh_money: tighMoney || 0,
-        food_money: foodMoney || 0,
-        ot: ot || 0,
+        food_money: foodMoney,
+        ot: totalOt,
       });
     } else {
       await specialAllowance.update({
         bonus_money: bonusMoney || specialAllowance.bonus_money,
         tigh_money: tighMoney || specialAllowance.tigh_money,
-        food_money: foodMoney || specialAllowance.food_money,
-        ot: ot || specialAllowance.ot,
+        food_money: foodMoney, // ໃຊ້ຄ່າທີ່ຄຳນວນໄດ້
+        ot: totalOt,
       });
     }
 
-    // ຄຳນວນຍອດລວມກ່ອນຫັກ
     const totalSalaryBeforeCut =
-      parseFloat(baseSalary || 0) +
+      baseSalary +
       parseFloat(bonusMoney || 0) +
       parseFloat(tighMoney || 0) +
-      parseFloat(foodMoney || 0) +
-      parseFloat(ot || 0);
+      foodMoney +
+      totalOt;
 
-    // ໃຊ້ cutMoney ຈາກ input
-    const calculatedCutMoney = parseFloat(cutMoney || 0);
+    const calculatedCutMoney = totalPenalty;
 
-    // ຄຳນວນເງິນເດືອນສຸດທິ
     const netSalary = totalSalaryBeforeCut - calculatedCutMoney;
 
-    // ບັນທຶກຂໍ້ມູນໃນ Payroll
     const payroll = await Payroll.create({
       employee_id: employeeId,
       special_allowance_id: specialAllowance.special_allowance_id,
-      base_salary: baseSalary || 0,
+      base_salary: baseSalary,
       cut_money: calculatedCutMoney,
       net_salary: netSalary.toFixed(2),
-      payment_date: paymentDate || new Date(),
+      payment_date: validPaymentDate,
     });
 
     return {
       employeeId: employee.employee_id,
       name: employee.name,
-      baseSalary: baseSalary || 0,
+      baseSalary: baseSalary,
       bonusMoney: bonusMoney || 0,
       tighMoney: tighMoney || 0,
-      foodMoney: foodMoney || 0,
-      ot: ot || 0,
+      foodMoney: foodMoney,
+      ot: totalOt,
       cutMoney: calculatedCutMoney,
       netSalary: netSalary.toFixed(2),
       paymentDate: payroll.payment_date,
