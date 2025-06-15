@@ -192,6 +192,52 @@ const getAllEmployeeOtForLastMonth = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Failed to retrieve OT data', error: error.message });
   }
 };
+// Get OT for a specific employee for the current month
+const getEmployeeOtForLastMonth = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const employeeId = parseInt(id, 10);
+
+    if (!employeeId || isNaN(employeeId)) {
+      return res.status(400).json({ status: 'error', message: 'Invalid or missing employeeId' });
+    }
+
+    const currentDate = new Date(); // ວັນປະຈຸບັນ: 15 ມິຖຸນາ 2025 08:37 PM +07
+    const paymentMonth = currentDate.toISOString().slice(0, 7); // ໃຊ້ເດືອນປະຈຸບັນ: 2025-06
+
+    const specialAllowance = await SpecialAllowance.findOne({
+      include: [
+        {
+          model: Employee,
+          as: 'employee',
+          attributes: ['employee_id', 'name'],
+          where: { employee_id: employeeId },
+        },
+      ],
+      where: {
+        created_at: {
+          [Op.gte]: new Date(`${paymentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1)),
+        },
+      },
+    });
+
+    if (!specialAllowance) {
+      return res.status(404).json({ status: 'error', message: 'No OT record found for this employee in the current month' });
+    }
+
+    const otData = {
+      employee_id: specialAllowance.employee.employee_id,
+      name: specialAllowance.employee.name,
+      ot: specialAllowance.ot || 0,
+    };
+
+    return res.status(200).json({ status: 'success', data: otData });
+  } catch (error) {
+    console.error('Error in getEmployeeOtForLastMonth:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve OT data', error: error.message });
+  }
+};
 module.exports = {
   createPayroll,
   getAllPayrolls,
@@ -200,5 +246,6 @@ module.exports = {
   deletePayroll,  
   handleCalculatePayroll,
   getPayrollByEmployeeId,
-  getAllEmployeeOtForLastMonth
+  getAllEmployeeOtForLastMonth,
+  getEmployeeOtForLastMonth
 };
