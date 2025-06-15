@@ -51,12 +51,20 @@ router.get('/employees/:id', employeeController.getEmployeeById);
 router.put('/employees/:id', employeeController.updateEmployee);
 router.delete('/employees/:id', employeeController.deleteEmployee);
 
+// Routes ສຳລັບນັບຈຳນວນ
+router.get('/attendances/late-today', attendanceController.getLateTodayCount);
+router.get('/attendances/absent-today', attendanceController.getAbsentTodayCount);
+router.get('/attendances/late-month', attendanceController.getLateThisMonthCount);
+router.get('/attendances/absent-month', attendanceController.getAbsentThisMonthCount);
+
+// Routes ເດີມທີ່ທ່ານໃຊ້
 router.post('/attendances', attendanceController.createAttendance);
 router.get('/attendances', attendanceController.getAllAttendances);
 router.get('/attendances/:id', attendanceController.getAttendanceById);
 router.get('/attendances/emp/:employee_id', attendanceController.getAttendanceByEmployeeId);
 router.put('/attendances/:id', attendanceController.updateAttendance);
 router.delete('/attendances/:id', attendanceController.deleteAttendance);
+
 
 router.post('/payrolls', payrollController.createPayroll);
 router.get('/payrolls', payrollController.getAllPayrolls);
@@ -66,6 +74,7 @@ router.delete('/payrolls/:id', payrollController.deletePayroll);
 router.post('/cal_payrolls', payrollController.handleCalculatePayroll); 
 router.get('/cal_payrolls/:employeeId', payrollController.getPayrollByEmployeeId);
 router.get('/payrolls_total_ot', payrollController.getAllEmployeeOtForLastMonth);
+router.get('/payrolls_total_ot/:id', payrollController.getEmployeeOtForLastMonth);
 
 router.post('/special-allowances', specialAllowanceController.createSpecialAllowance);
 router.get('/special-allowances', specialAllowanceController.getAllSpecialAllowances);

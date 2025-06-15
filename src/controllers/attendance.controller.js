@@ -1,18 +1,16 @@
-// src/controllers/attendance.controller.js
 const { Attendance, Employee, EmployeeWorkSchedule, SpecialAllowance, Position } = require('../models');
 const { Op } = require('sequelize');
 
 const createAttendance = async (req, res) => {
   try { 
-    const { employee_id, check_in_time, check_out_time, date } = req.body; // ຮັບ date ຈາກ input
+    const { employee_id, check_in_time, check_out_time, date } = req.body;
 
     if (!employee_id || isNaN(employee_id)) {
       return res.status(400).json({ error: 'Invalid or missing employee_id' });
     }
 
-    const todayDate = date || new Date().toISOString().split('T')[0]; // ໃຊ້ date ຈາກ input ຫຼື today
+    const todayDate = date || new Date().toISOString().split('T')[0];
 
-    // ດຶງຂໍ້ມູນພະນັກງານພ້ອມກັບ Position ແລະ Schedule
     const employee = await Employee.findByPk(employee_id, {
       include: [{ model: EmployeeWorkSchedule, as: 'schedule' }, { model: Position, as: 'position' }],
     });
@@ -74,15 +72,15 @@ const createAttendance = async (req, res) => {
 
       const checkOutTime = new Date(`${todayDate}T${checkOutTimeStr}`);
       const overtimeMs = checkOutTime - shiftEnd;
-      const gracePeriodMs = 60 * 60 * 1000; // 1 ຊົ່ວໂມງ (60 ນາທີ) ໃນຮູບແບບ milliseconds
+      const gracePeriodMs = 60 * 60 * 1000;
 
       let otAmount = 0;
-      if (overtimeMs > gracePeriodMs) { // ຄຳນວນ OT ແຕ່ຫຼັງ 1 ຊົ່ວໂມງ
+      if (overtimeMs > gracePeriodMs) {
         const overtimeAfterGraceMs = overtimeMs - gracePeriodMs;
-        const overtimeMinutes = Math.max(0, Math.floor(overtimeAfterGraceMs / (1000 * 60))); // ຄຳນວນເປັນນາທີ
+        const overtimeMinutes = Math.max(0, Math.floor(overtimeAfterGraceMs / (1000 * 60)));
         const rateOt = employee.position ? parseFloat(employee.position.rate_ot) || 0 : 0;
-        const ratePerMinute = rateOt / 60; // ແບ່ງ rate_ot ຕໍ່ຊົ່ວໂມງໃຫ້ເປັນຕໍ່ນາທີ
-        otAmount = overtimeMinutes * ratePerMinute; // ຄຳນວນ OT ຕາມນາທີ
+        const ratePerMinute = rateOt / 60;
+        otAmount = overtimeMinutes * ratePerMinute;
       }
 
       const paymentMonth = todayDate.slice(0, 7);
@@ -106,13 +104,12 @@ const createAttendance = async (req, res) => {
         });
       } else {
         const newOt = parseFloat(specialAllowance.ot) + otAmount;
-        // ປັບຜົນການຄຳນວນ totalOt ໂດຍໃຊ້ກົດ 0.50 = 1, 0.49 = 0
-        const decimalPart = newOt % 1; // ສ່ວນທົດສູບ
+        const decimalPart = newOt % 1;
         let adjustedTotalOt;
         if (decimalPart >= 0.50) {
-          adjustedTotalOt = Math.floor(newOt) + 1; // Round up
+          adjustedTotalOt = Math.floor(newOt) + 1;
         } else {
-          adjustedTotalOt = Math.floor(newOt); // Round down
+          adjustedTotalOt = Math.floor(newOt);
         }
         await specialAllowance.update({ ot: adjustedTotalOt });
       }
@@ -133,7 +130,6 @@ const createAttendance = async (req, res) => {
         penalty_amount: penalty
       });
 
-      // ຄຳນວນ food_money ຕາມວັນທີ່ແທ້ຈິງ
       const existingAttendanceToday = await Attendance.count({
         where: {
           employee_id,
@@ -153,7 +149,7 @@ const createAttendance = async (req, res) => {
       });
 
       let newFoodMoney = 0;
-      if (existingAttendanceToday === 1) { // ນັບພຽງ check-in ຄັ້ງທໍາອິດຂອງມື້
+      if (existingAttendanceToday === 1) {
         newFoodMoney = 30000;
       }
 
@@ -167,7 +163,7 @@ const createAttendance = async (req, res) => {
         });
       } else {
         const currentFoodMoney = parseFloat(specialAllowance.food_money) || 0;
-        newFoodMoney = currentFoodMoney + (existingAttendanceToday === 1 ? 30000 : 0); // ເພີ່ມພຽງຄັ້ງດຽວຕໍ່ມື້
+        newFoodMoney = currentFoodMoney + (existingAttendanceToday === 1 ? 30000 : 0);
         await specialAllowance.update({ food_money: newFoodMoney });
       }
 
@@ -197,6 +193,9 @@ const getAttendanceById = async (req, res) => {
   try {
     const { id } = req.params;
     const parsedId = parseInt(id, 10);
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid attendance ID' });
+    }
     const attendance = await Attendance.findByPk(parsedId, {
       include: [{ model: Employee, as: 'employee' }]
     });
@@ -213,8 +212,12 @@ const getAttendanceById = async (req, res) => {
 const getAttendanceByEmployeeId = async (req, res) => {
   try {
     const { employee_id } = req.params;
+    const parsedId = parseInt(employee_id, 10);
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid employee ID' });
+    }
     const attendances = await Attendance.findAll({
-      where: { employee_id },
+      where: { employee_id: parsedId },
       include: [{ model: Employee, as: 'employee' }],
       order: [['date', 'DESC'], ['check_in_time', 'ASC']]
     });
@@ -234,6 +237,9 @@ const updateAttendance = async (req, res) => {
   try {
     const { id } = req.params;
     const parsedId = parseInt(id, 10);
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid attendance ID' });
+    }
     const { employee_id, check_in_time, check_out_time, date } = req.body;
 
     const attendance = await Attendance.findByPk(parsedId);
@@ -258,6 +264,9 @@ const deleteAttendance = async (req, res) => {
   try {
     const { id } = req.params;
     const parsedId = parseInt(id, 10);
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid attendance ID' });
+    }
     const attendance = await Attendance.findByPk(parsedId);
     if (!attendance) {
       return res.status(404).json({ error: 'Attendance record not found' });
@@ -269,11 +278,105 @@ const deleteAttendance = async (req, res) => {
   }
 };
 
+// Get count of employees late by more than 15 minutes today
+const getLateTodayCount = async (req, res) => {
+  try {
+    console.log('Params:', req.params); // Debug: ກວດສອບ params
+    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
+    const todayDate = currentDate.toISOString().split('T')[0]; // 2025-06-15
+
+    const lateToday = await Attendance.count({
+      where: {
+        date: todayDate,
+        late: true,
+      },
+      include: [{ model: Employee, as: 'employee' }],
+    });
+
+    return res.status(200).json({ status: 'success', data: { lateToday: lateToday } });
+  } catch (error) {
+    console.error('Error in getLateTodayCount:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve late today count', error: error.message });
+  }
+};
+
+// Get count of employees absent today
+const getAbsentTodayCount = async (req, res) => {
+  try {
+    console.log('Params:', req.params); // Debug: ກວດສອບ params
+    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
+    const todayDate = currentDate.toISOString().split('T')[0]; // 2025-06-15
+
+    const totalEmployees = await Employee.count();
+    const attendedToday = await Attendance.count({
+      where: { date: todayDate },
+      distinct: true,
+      col: 'employee_id',
+    });
+    const absentToday = totalEmployees - attendedToday;
+
+    return res.status(200).json({ status: 'success', data: { absentToday: absentToday } });
+  } catch (error) {
+    console.error('Error in getAbsentTodayCount:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve absent today count', error: error.message });
+  }
+};
+
+// Get count of employees late by more than 15 minutes this month
+const getLateThisMonthCount = async (req, res) => {
+  try {
+    console.log('Params:', req.params); // Debug: ກວດສອບ params
+    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
+    const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
+
+    const lateThisMonth = await Attendance.count({
+      where: {
+        date: { [Op.gte]: `${currentMonth}-01`, [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)) },
+        late: true,
+      },
+      include: [{ model: Employee, as: 'employee' }],
+    });
+
+    return res.status(200).json({ status: 'success', data: { lateThisMonth: lateThisMonth } });
+  } catch (error) {
+    console.error('Error in getLateThisMonthCount:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve late this month count', error: error.message });
+  }
+};
+
+// Get count of employees absent this month
+const getAbsentThisMonthCount = async (req, res) => {
+  try {
+    console.log('Params:', req.params); // Debug: ກວດສອບ params
+    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
+    const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
+
+    const totalEmployees = await Employee.count();
+    const attendedThisMonth = await Attendance.count({
+      where: {
+        date: { [Op.gte]: `${currentMonth}-01`, [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)) },
+      },
+      distinct: true,
+      col: 'employee_id',
+    });
+    const absentThisMonth = totalEmployees - attendedThisMonth;
+
+    return res.status(200).json({ status: 'success', data: { absentThisMonth: absentThisMonth } });
+  } catch (error) {
+    console.error('Error in getAbsentThisMonthCount:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve absent this month count', error: error.message });
+  }
+};
+
 module.exports = {
   createAttendance,
   getAllAttendances,
   getAttendanceById,
   getAttendanceByEmployeeId,
   updateAttendance,
-  deleteAttendance
+  deleteAttendance,
+  getLateTodayCount,
+  getAbsentTodayCount,
+  getLateThisMonthCount,
+  getAbsentThisMonthCount
 };
