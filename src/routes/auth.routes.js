@@ -63,8 +63,9 @@ router.get('/payrolls', payrollController.getAllPayrolls);
 router.get('/payrolls/:id', payrollController.getPayrollById);
 router.put('/payrolls/:id', payrollController.updatePayroll);
 router.delete('/payrolls/:id', payrollController.deletePayroll);
-router.post('/payrolls/calculate', payrollController.handleCalculatePayroll); 
+router.post('/cal_payrolls', payrollController.handleCalculatePayroll); 
 router.get('/cal_payrolls/:employeeId', payrollController.getPayrollByEmployeeId);
+router.get('/payrolls_total_ot', payrollController.getAllEmployeeOtForLastMonth);
 
 router.post('/special-allowances', specialAllowanceController.createSpecialAllowance);
 router.get('/special-allowances', specialAllowanceController.getAllSpecialAllowances);
@@ -72,7 +73,7 @@ router.get('/special-allowances/:id', specialAllowanceController.getSpecialAllow
 router.put('/special-allowances/:id', specialAllowanceController.updateSpecialAllowance);
 router.delete('/special-allowances/:id', specialAllowanceController.deleteSpecialAllowance);
 
-router.get('/role', roleController.getAllRoles); // ເພີ່ມ route ສຳລັບ GET /api/auth/role
+router.get('/role', roleController.getAllRoles); 
 router.get('/role/:id', roleController.getRoleById);
 router.post('/role', roleController.createRole);
 router.put('/role/:id', roleController.updateRole);

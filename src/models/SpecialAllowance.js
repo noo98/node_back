@@ -13,7 +13,7 @@ const SpecialAllowance = sequelize.define('SpecialAllowance', {
   },
   employee_id: {
     type: DataTypes.INTEGER,
-    allowNull: false,
+    allowNull: false, 
     field: 'employee_id'
     // ການອ້າງອີງຈະຖືກກຳນົດຫຼັງຈາກສ້າງໂມເດວ Employee
   },

@@ -1,5 +1,7 @@
+// controllers/payroll.controller.js
 const { calculatePayroll } = require('../services/calculatePayroll');
 const { Payroll, Employee, SpecialAllowance } = require('../models');
+const { Op } = require('sequelize');
 
 // Create a new payroll record
 const createPayroll = async (req, res) => {
@@ -96,13 +98,18 @@ const deletePayroll = async (req, res) => {
   }
 };
 
-// Calculate payroll for an employee
 const handleCalculatePayroll = async (req, res) => {
   try {
-    const { employeeId, paymentDate } = req.body;
+    const { employeeId, paymentDate, bonusMoney, tighMoney, foodMoney, ot, cutMoney } = req.body;
 
     if (!employeeId || isNaN(employeeId)) {
       return res.status(400).json({ status: 'error', message: 'Invalid or missing employeeId' });
+    }
+
+    // ໃຊ້ວັນປະຈຸບັນເປັນ default ຖ້າ paymentDate ບໍ່ມີ
+    let validPaymentDate = paymentDate ? new Date(paymentDate) : new Date();
+    if (paymentDate && isNaN(validPaymentDate.getTime())) {
+      return res.status(400).json({ status: 'error', message: 'Invalid paymentDate format' });
     }
 
     const employee = await Employee.findByPk(employeeId);
@@ -110,7 +117,13 @@ const handleCalculatePayroll = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'Employee not found' });
     }
 
-    const payrollResult = await calculatePayroll(employeeId, paymentDate);
+    const payrollResult = await calculatePayroll(employeeId, validPaymentDate, {
+      bonusMoney,
+      tighMoney,
+      foodMoney,
+      ot,
+      cutMoney,
+    });
     return res.status(200).json({ status: 'success', data: payrollResult });
   } catch (error) {
     console.error('Error in calculatePayroll:', error);
@@ -145,7 +158,40 @@ const getPayrollByEmployeeId = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Failed to retrieve payroll data', error: error.message });
   }
 };
+// Get OT for all employees for the last month
+const getAllEmployeeOtForLastMonth = async (req, res) => {
+  try {
+    const currentDate = new Date(); // ວັນປະຈຸບັນ: 15 ມິຖຸນາ 2025 06:57 PM +07
+    const paymentMonth = currentDate.toISOString().slice(0, 7); // ໃຊ້ເດືອນປະຈຸບັນ: 2025-06
 
+    const specialAllowances = await SpecialAllowance.findAll({
+      include: [
+        {
+          model: Employee,
+          as: 'employee',
+          attributes: ['employee_id', 'name'],
+        },
+      ],
+      where: {
+        created_at: {
+          [Op.gte]: new Date(`${paymentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${paymentMonth}-01`).setMonth(new Date(`${paymentMonth}-01`).getMonth() + 1)),
+        },
+      },
+    });
+
+    const totalOt = specialAllowances.reduce((sum, allowance) => sum + (parseFloat(allowance.ot) || 0), 0);
+
+    if (totalOt === 0) {
+      return res.status(404).json({ status: 'error', message: 'No OT records found for the current month' });
+    }
+
+    return res.status(200).json({ status: 'success', data: { totalOt: totalOt.toFixed(2) } });
+  } catch (error) {
+    console.error('Error in getAllEmployeeOtForLastMonth:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve OT data', error: error.message });
+  }
+};
 module.exports = {
   createPayroll,
   getAllPayrolls,
@@ -153,5 +199,6 @@ module.exports = {
   updatePayroll,
   deletePayroll,  
   handleCalculatePayroll,
-  getPayrollByEmployeeId
+  getPayrollByEmployeeId,
+  getAllEmployeeOtForLastMonth
 };

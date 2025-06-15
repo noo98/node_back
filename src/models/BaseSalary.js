@@ -1,14 +1,15 @@
+// src/models/BaseSalary.js
 const { DataTypes } = require('sequelize');
 const { sequelize } = require('../db/connection');
-
+const Position = require('./Position');
 
 const BaseSalary = sequelize.define('BaseSalary', {
   base_sal_id: {
     type: DataTypes.INTEGER,
     primaryKey: true,
-        autoIncrement: true,
-        allowNull: false,
-        field: 'base_sal_id'
+    autoIncrement: true,
+    allowNull: false,
+    field: 'base_sal_id'
   },
   salary: {
     type: DataTypes.DECIMAL(10, 2),
@@ -21,5 +22,6 @@ const BaseSalary = sequelize.define('BaseSalary', {
   underscored: true
 });
 
-module.exports = BaseSalary;
 
+
+module.exports = BaseSalary;
