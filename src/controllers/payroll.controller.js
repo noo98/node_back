@@ -39,17 +39,38 @@ const getAllPayrolls = async (req, res) => {
 const getAllPayroll = async (req, res) => {
   try {
     console.log('Params:', req.params); 
-    const currentDate = new Date(); 
-    const currentMonth = currentDate.toISOString().slice(0, 7); 
+    const currentDate = new Date(); // 10:40 PM +07, 16 ມິຖຸນາ 2025
+    const { month } = req.query; // ດຶງ month ຈາກ query parameter
+    let whereClause = {};
 
-    
-    const payrolls = await Payroll.findAll({
-      where: {
+    // ກຳນົດ whereClause ຕາມ month ຖ້າມີ
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ status: 'error', message: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause = {
+        payment_date: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      };
+    } else {
+      // ຖ້າບໍ່ມີ month, ໃຊ້ເດືອນປະຈຸບັນ (2025-06)
+      const currentMonth = currentDate.toISOString().slice(0, 7);
+      whereClause = {
         payment_date: {
           [Op.gte]: new Date(`${currentMonth}-01`),
           [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)),
         },
-      },
+      };
+    }
+
+    const payrolls = await Payroll.findAll({
+      where: whereClause,
       include: [
         { model: Employee, as: 'employee', attributes: ['employee_id', 'name'] },
         { model: SpecialAllowance, as: 'specialAllowance', attributes: ['special_allowance_id', 'bonus_money', 'tigh_money', 'food_money', 'ot'] }
@@ -60,12 +81,10 @@ const getAllPayroll = async (req, res) => {
       return res.status(404).json({ status: 'error', message: 'No payroll records found for the current month' });
     }
 
-    
     const payrollsWithCalculatedNet = await Promise.all(payrolls.map(async (payroll) => {
       const { employee_id, base_salary, cut_money, specialAllowance } = payroll;
       const paymentDate = new Date(payroll.payment_date);
 
-      
       const calculatedResult = await calculatePayroll(employee_id, paymentDate, {
         bonusMoney: specialAllowance?.bonus_money || 0,
         tighMoney: specialAllowance?.tigh_money || 0,
@@ -76,7 +95,7 @@ const getAllPayroll = async (req, res) => {
 
       return {
         ...payroll.toJSON(),
-        net_salary: calculatedResult.net_salary || payroll.net_salary, 
+        net_salary: calculatedResult.net_salary || payroll.net_salary,
       };
     }));
 
@@ -184,13 +203,30 @@ const handleCalculatePayroll = async (req, res) => {
 const getPayrollByEmployeeId = async (req, res) => {
   try {
     const { employeeId } = req.params;
+    const { month } = req.query; // ດຶງ month ຈາກ query parameter
 
     if (!employeeId || isNaN(employeeId)) {
       return res.status(400).json({ status: 'error', message: 'Invalid or missing employeeId' });
     }
 
+    let whereClause = { employee_id: employeeId };
+
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ status: 'error', message: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause.payment_date = {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
+      };
+    }
+
     const payrolls = await Payroll.findAll({
-      where: { employee_id: employeeId },
+      where: whereClause,
       include: [
         { model: Employee, as: 'employee', attributes: ['employee_id', 'name'] },
         { model: SpecialAllowance, as: 'specialAllowance', attributes: ['special_allowance_id', 'bonus_money', 'tigh_money', 'food_money', 'ot'] }
@@ -294,8 +330,8 @@ module.exports = {
   updatePayroll,
   deletePayroll,  
   handleCalculatePayroll,
-  getPayrollByEmployeeId,
   getAllEmployeeOtForLastMonth,
   getEmployeeOtForLastMonth,
+  getPayrollByEmployeeId,
   getAllPayroll
 };

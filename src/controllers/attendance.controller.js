@@ -181,8 +181,31 @@ const createAttendance = async (req, res) => {
 // Get all attendance records with employee details
 const getAllAttendances = async (req, res) => {
   try {
-    const attendance = await Attendance.findAll();
-    return res.status(200).json(attendance);
+    const { month } = req.query; // ດຶງ month ຈາກ query parameter
+    let whereClause = {};
+
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause = {
+        date: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      };
+    }
+
+    const attendances = await Attendance.findAll({
+      where: whereClause,
+      include: [{ model: Employee, as: 'employee' }],
+      order: [['date', 'DESC'], ['check_in_time', 'ASC']],
+    });
+    return res.status(200).json(attendances);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -212,14 +235,33 @@ const getAttendanceById = async (req, res) => {
 const getAttendanceByEmployeeId = async (req, res) => {
   try {
     const { employee_id } = req.params;
+    const { month } = req.query; 
     const parsedId = parseInt(employee_id, 10);
+
     if (isNaN(parsedId)) {
       return res.status(400).json({ error: 'Invalid employee ID' });
     }
+
+    let whereClause = { employee_id: parsedId };
+
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause.date = {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
+      };
+    }
+
     const attendances = await Attendance.findAll({
-      where: { employee_id: parsedId },
+      where: whereClause,
       include: [{ model: Employee, as: 'employee' }],
-      order: [['date', 'DESC'], ['check_in_time', 'ASC']]
+      order: [['date', 'DESC'], ['check_in_time', 'ASC']],
     });
 
     if (!attendances || attendances.length === 0) {
