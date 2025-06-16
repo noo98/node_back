@@ -36,6 +36,56 @@ const getAllPayrolls = async (req, res) => {
   }
 };
 
+const getAllPayroll = async (req, res) => {
+  try {
+    console.log('Params:', req.params); 
+    const currentDate = new Date(); 
+    const currentMonth = currentDate.toISOString().slice(0, 7); 
+
+    
+    const payrolls = await Payroll.findAll({
+      where: {
+        payment_date: {
+          [Op.gte]: new Date(`${currentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)),
+        },
+      },
+      include: [
+        { model: Employee, as: 'employee', attributes: ['employee_id', 'name'] },
+        { model: SpecialAllowance, as: 'specialAllowance', attributes: ['special_allowance_id', 'bonus_money', 'tigh_money', 'food_money', 'ot'] }
+      ],
+    });
+
+    if (!payrolls || payrolls.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'No payroll records found for the current month' });
+    }
+
+    
+    const payrollsWithCalculatedNet = await Promise.all(payrolls.map(async (payroll) => {
+      const { employee_id, base_salary, cut_money, specialAllowance } = payroll;
+      const paymentDate = new Date(payroll.payment_date);
+
+      
+      const calculatedResult = await calculatePayroll(employee_id, paymentDate, {
+        bonusMoney: specialAllowance?.bonus_money || 0,
+        tighMoney: specialAllowance?.tigh_money || 0,
+        foodMoney: specialAllowance?.food_money || 0,
+        ot: specialAllowance?.ot || 0,
+        cutMoney: cut_money || 0,
+      });
+
+      return {
+        ...payroll.toJSON(),
+        net_salary: calculatedResult.net_salary || payroll.net_salary, 
+      };
+    }));
+
+    return res.status(200).json({ status: 'success', data: payrollsWithCalculatedNet });
+  } catch (error) {
+    console.error('Error in getAllPayroll:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve payroll data', error: error.message });
+  }
+};
 // Get a payroll record by ID with employee and special allowance details
 const getPayrollById = async (req, res) => {
   try {
@@ -106,7 +156,6 @@ const handleCalculatePayroll = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Invalid or missing employeeId' });
     }
 
-    // ໃຊ້ວັນປະຈຸບັນເປັນ default ຖ້າ paymentDate ບໍ່ມີ
     let validPaymentDate = paymentDate ? new Date(paymentDate) : new Date();
     if (paymentDate && isNaN(validPaymentDate.getTime())) {
       return res.status(400).json({ status: 'error', message: 'Invalid paymentDate format' });
@@ -161,8 +210,8 @@ const getPayrollByEmployeeId = async (req, res) => {
 // Get OT for all employees for the last month
 const getAllEmployeeOtForLastMonth = async (req, res) => {
   try {
-    const currentDate = new Date(); // ວັນປະຈຸບັນ: 15 ມິຖຸນາ 2025 06:57 PM +07
-    const paymentMonth = currentDate.toISOString().slice(0, 7); // ໃຊ້ເດືອນປະຈຸບັນ: 2025-06
+    const currentDate = new Date(); 
+    const paymentMonth = currentDate.toISOString().slice(0, 7); 
 
     const specialAllowances = await SpecialAllowance.findAll({
       include: [
@@ -202,8 +251,8 @@ const getEmployeeOtForLastMonth = async (req, res) => {
       return res.status(400).json({ status: 'error', message: 'Invalid or missing employeeId' });
     }
 
-    const currentDate = new Date(); // ວັນປະຈຸບັນ: 15 ມິຖຸນາ 2025 08:37 PM +07
-    const paymentMonth = currentDate.toISOString().slice(0, 7); // ໃຊ້ເດືອນປະຈຸບັນ: 2025-06
+    const currentDate = new Date(); 
+    const paymentMonth = currentDate.toISOString().slice(0, 7); 
 
     const specialAllowance = await SpecialAllowance.findOne({
       include: [
@@ -247,5 +296,6 @@ module.exports = {
   handleCalculatePayroll,
   getPayrollByEmployeeId,
   getAllEmployeeOtForLastMonth,
-  getEmployeeOtForLastMonth
+  getEmployeeOtForLastMonth,
+  getAllPayroll
 };
