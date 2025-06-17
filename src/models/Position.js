@@ -19,7 +19,7 @@ const Position = sequelize.define('Position', {
   rate_ot: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
-    field: 'rate_ot' // ຄ່າ OT ຕໍ່ຊົ່ວໂມງ (e.g., 50,000.00)
+    field: 'rate_ot'
   },
   base_sal_id: {
     type: DataTypes.INTEGER,
