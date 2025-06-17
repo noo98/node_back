@@ -1,5 +1,5 @@
 const { Attendance, Employee, EmployeeWorkSchedule, SpecialAllowance, Position } = require('../models');
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 
 const createAttendance = async (req, res) => {
   try { 
@@ -181,8 +181,31 @@ const createAttendance = async (req, res) => {
 // Get all attendance records with employee details
 const getAllAttendances = async (req, res) => {
   try {
-    const attendance = await Attendance.findAll();
-    return res.status(200).json(attendance);
+    const { month } = req.query; // ດຶງ month ຈາກ query parameter
+    let whereClause = {};
+
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause = {
+        date: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      };
+    }
+
+    const attendances = await Attendance.findAll({
+      where: whereClause,
+      include: [{ model: Employee, as: 'employee' }],
+      order: [['date', 'DESC'], ['check_in_time', 'ASC']],
+    });
+    return res.status(200).json(attendances);
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
@@ -212,14 +235,33 @@ const getAttendanceById = async (req, res) => {
 const getAttendanceByEmployeeId = async (req, res) => {
   try {
     const { employee_id } = req.params;
+    const { month } = req.query; 
     const parsedId = parseInt(employee_id, 10);
+
     if (isNaN(parsedId)) {
       return res.status(400).json({ error: 'Invalid employee ID' });
     }
+
+    let whereClause = { employee_id: parsedId };
+
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause.date = {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
+      };
+    }
+
     const attendances = await Attendance.findAll({
-      where: { employee_id: parsedId },
+      where: whereClause,
       include: [{ model: Employee, as: 'employee' }],
-      order: [['date', 'DESC'], ['check_in_time', 'ASC']]
+      order: [['date', 'DESC'], ['check_in_time', 'ASC']],
     });
 
     if (!attendances || attendances.length === 0) {
@@ -303,9 +345,9 @@ const getLateTodayCount = async (req, res) => {
 // Get count of employees absent today
 const getAbsentTodayCount = async (req, res) => {
   try {
-    console.log('Params:', req.params); // Debug: ກວດສອບ params
-    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
-    const todayDate = currentDate.toISOString().split('T')[0]; // 2025-06-15
+    console.log('Params:', req.params);
+    const currentDate = new Date();
+    const todayDate = currentDate.toISOString().split('T')[0];
 
     const totalEmployees = await Employee.count();
     const attendedToday = await Attendance.count({
@@ -322,52 +364,93 @@ const getAbsentTodayCount = async (req, res) => {
   }
 };
 
-// Get count of employees late by more than 15 minutes this month
 const getLateThisMonthCount = async (req, res) => {
   try {
     console.log('Params:', req.params); // Debug: ກວດສອບ params
-    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
+    const currentDate = new Date(); // 12:30 AM +07, 16 ມິຖຸນາ 2025
     const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
 
-    const lateThisMonth = await Attendance.count({
+    const lateDetails = await Attendance.findAll({
+      attributes: [
+        'date',
+        [Sequelize.fn('COUNT', Sequelize.col('attendance_id')), 'count']
+      ],
       where: {
         date: { [Op.gte]: `${currentMonth}-01`, [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)) },
         late: true,
       },
-      include: [{ model: Employee, as: 'employee' }],
+      group: ['date'],
+      raw: true,
     });
 
-    return res.status(200).json({ status: 'success', data: { lateThisMonth: lateThisMonth } });
+    const lateSummary = lateDetails.map(item => ({
+      date: new Date(item.date).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      count: parseInt(item.count),
+    }));
+
+    return res.status(200).json({ status: 'success', data: { lateDetails: lateSummary } });
   } catch (error) {
     console.error('Error in getLateThisMonthCount:', error);
-    return res.status(500).json({ status: 'error', message: 'Failed to retrieve late this month count', error: error.message });
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve late this month details', error: error.message });
   }
 };
-
-// Get count of employees absent this month
 const getAbsentThisMonthCount = async (req, res) => {
   try {
     console.log('Params:', req.params); // Debug: ກວດສອບ params
-    const currentDate = new Date(); // 10:54 PM +07, 15 ມິຖຸນາ 2025
+    const currentDate = new Date(); // 12:40 AM +07, 16 ມິຖຸນາ 2025
     const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
-
     const totalEmployees = await Employee.count();
-    const attendedThisMonth = await Attendance.count({
-      where: {
-        date: { [Op.gte]: `${currentMonth}-01`, [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)) },
-      },
-      distinct: true,
-      col: 'employee_id',
-    });
-    const absentThisMonth = totalEmployees - attendedThisMonth;
 
-    return res.status(200).json({ status: 'success', data: { absentThisMonth: absentThisMonth } });
+    // ສ້າງລາຍຊື່ວັນທີ່ຈາກ 1 ຫາ 15 ມິຖຸນາ 2025 (ຍ້ອນວ່າຂໍ້ມູນສິ້ນສຸດທີ່ 15/06/2025 ຈາກ log)
+    const startDate = new Date(`${currentMonth}-01`);
+    const endDate = new Date('2025-06-15'); // ປັບໃຫ້ຕົງກັບ log
+    const dateRange = [];
+    for (let d = new Date(startDate); d <= endDate; d.setDate(d.getDate() + 1)) {
+      dateRange.push(new Date(d).toISOString().split('T')[0]);
+    }
+
+    // ຊອກຫາວັນທີ່ມີການສະແກນພ້ອມຈຳນວນຜູ້ທີ່ສະແກນ (distinct employee_id)
+    const attendedDetails = await Attendance.findAll({
+      attributes: [
+        'date',
+        [Sequelize.fn('COUNT', Sequelize.fn('DISTINCT', Sequelize.col('employee_id'))), 'attendedCount']
+      ],
+      where: {
+        date: { [Op.gte]: `${currentMonth}-01`, [Op.lte]: endDate.toISOString().split('T')[0] },
+      },
+      group: ['date'],
+      raw: true,
+    });
+
+    // ປະມວນຜົນເປັນອອບເຈັກທີ່ມີ attendedCount ຕາມວັນ
+    const attendedMap = attendedDetails.reduce((map, item) => {
+      map[item.date] = parseInt(item.attendedCount);
+      return map;
+    }, {});
+
+    // ນັບຈຳນວນຜູ້ບໍ່ມາສະແກນແຕ່ລະວັນ ແລະປ່ຽນເປັນປີປະຕິທິນ
+    const absentDetails = dateRange.map(date => {
+      const attendedCount = attendedMap[date] || 0;
+      const absentCount = totalEmployees - attendedCount;
+      const dateObj = new Date(date);
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const year = dateObj.getFullYear() + 543; // ປ່ຽນເປັນປີປະຕິທິນ
+      return {
+        date: `${day}/${month}/${year}`,
+        count: absentCount > 0 ? absentCount : 0,
+      };
+    });
+
+    // ກິລິຍາສະຫງວນພຽງແຕ່ວັນທີ່ມີຜູ້ບໍ່ມາ
+    const filteredAbsentDetails = absentDetails.filter(item => item.count > 0);
+
+    return res.status(200).json({ status: 'success', data: { absentDetails: filteredAbsentDetails } });
   } catch (error) {
     console.error('Error in getAbsentThisMonthCount:', error);
-    return res.status(500).json({ status: 'error', message: 'Failed to retrieve absent this month count', error: error.message });
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve absent this month details', error: error.message });
   }
 };
-
 module.exports = {
   createAttendance,
   getAllAttendances,
