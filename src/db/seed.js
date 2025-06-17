@@ -64,7 +64,7 @@ async function seedDatabase() {
       }
     ]);
 
-    // ອັບເດດ employee_id ໃນຕາຕະລາງ Attendance
+    
     await attendances[0].update({ employee_id: employees[0].employee_id });
     await attendances[1].update({ employee_id: employees[1].employee_id });
 
