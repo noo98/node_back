@@ -79,6 +79,7 @@ router.get('/payrolls_total_ot/:id', payrollController.getEmployeeOtForLastMonth
 
 router.post('/special-allowances', specialAllowanceController.createSpecialAllowance);
 router.get('/special-allowances', specialAllowanceController.getAllSpecialAllowances);
+router.get('/special-allowances/emp/:employeeId', specialAllowanceController.getSpecialAllowanceByEmployeeId);
 router.get('/special-allowances/:id', specialAllowanceController.getSpecialAllowanceById);
 router.put('/special-allowances/:id', specialAllowanceController.updateSpecialAllowance);
 router.delete('/special-allowances/:id', specialAllowanceController.deleteSpecialAllowance);
