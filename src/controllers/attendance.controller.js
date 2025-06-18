@@ -367,7 +367,7 @@ const getAbsentTodayCount = async (req, res) => {
 const getLateThisMonthCount = async (req, res) => {
   try {
     console.log('Params:', req.params); // Debug: ກວດສອບ params
-    const currentDate = new Date(); // 12:30 AM +07, 16 ມິຖຸນາ 2025
+    const currentDate = new Date(); // 11:00 PM +07, 18 ມິຖຸນາ 2025
     const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
 
     const lateDetails = await Attendance.findAll({
@@ -376,7 +376,7 @@ const getLateThisMonthCount = async (req, res) => {
         [Sequelize.fn('COUNT', Sequelize.col('attendance_id')), 'count']
       ],
       where: {
-        date: { [Op.gte]: `${currentMonth}-01`, [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)) },
+        date: { [Op.gte]: `${currentMonth}-01`, [Op.lte]: currentDate.toISOString().split('T')[0] }, // ໃຊ້ວັນທີ່ປະຈຸບັນ
         late: true,
       },
       group: ['date'],
@@ -384,7 +384,7 @@ const getLateThisMonthCount = async (req, res) => {
     });
 
     const lateSummary = lateDetails.map(item => ({
-      date: new Date(item.date).toLocaleDateString('th-TH', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      date: new Date(item.date).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }), // ປ່ຽນເປັນ DD/MM/YYYY
       count: parseInt(item.count),
     }));
 
@@ -435,7 +435,7 @@ const getAbsentThisMonthCount = async (req, res) => {
       const dateObj = new Date(date);
       const day = String(dateObj.getDate()).padStart(2, '0');
       const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-      const year = dateObj.getFullYear() + 543; // ປ່ຽນເປັນປີປະຕິທິນ
+      const year = dateObj.getFullYear(); // ປ່ຽນເປັນປີປະຕິທິນ
       return {
         date: `${day}/${month}/${year}`,
         count: absentCount > 0 ? absentCount : 0,
