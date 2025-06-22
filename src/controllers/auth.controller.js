@@ -69,7 +69,8 @@ exports.login = async (req, res) => {
         username: users.username,
         role_id: users.role_id,
         email: users.email,
-        full_name: users.full_name
+        full_name: users.full_name,
+        profile_image: users.profile_image || null,
       },
       process.env.JWT_SECRET || "your-secret-key",
       { expiresIn: "24h" }
@@ -94,7 +95,8 @@ exports.login = async (req, res) => {
           username: users.username,
           full_name: users.full_name,
           role_id: users.role_id,
-          email: users.email
+          email: users.email,
+          profile_image: users.profile_image || null,
         },
       },
     });
