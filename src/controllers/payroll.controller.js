@@ -323,6 +323,54 @@ const getEmployeeOtForLastMonth = async (req, res) => {
     return res.status(500).json({ status: 'error', message: 'Failed to retrieve OT data', error: error.message });
   }
 };
+const getTotalMonthlyPayroll = async (req, res) => {
+  try {
+    const currentDate = new Date(); // 10:44 PM +07, 23 ມິຖຸນາ 2025
+    const { month } = req.query; // ດຶງ month ຈາກ query parameter
+    let whereClause = {};
+
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ status: 'error', message: 'Invalid month format. Use YYYY-MM (e.g., 2025-04)' });
+      }
+      const startDate = new Date(`${year}-${monthNum}-01`);
+      const endDate = new Date(startDate);
+      endDate.setMonth(endDate.getMonth() + 1);
+      whereClause = {
+        payment_date: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      };
+    } else {
+      // ຖ້າບໍ່ມີ month, ໃຊ້ເດືອນປະຈຸບັນ (2025-06)
+      const currentMonth = currentDate.toISOString().slice(0, 7);
+      whereClause = {
+        payment_date: {
+          [Op.gte]: new Date(`${currentMonth}-01`),
+          [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)),
+        },
+      };
+    }
+
+    const payrolls = await Payroll.findAll({
+      where: whereClause,
+      attributes: ['net_salary'],
+    });
+
+    if (!payrolls || payrolls.length === 0) {
+      return res.status(404).json({ status: 'error', message: 'No payroll records found for the specified month' });
+    }
+
+    const totalNetSalary = payrolls.reduce((sum, payroll) => sum + (parseFloat(payroll.net_salary) || 0), 0);
+
+    return res.status(200).json({ status: 'success', data: { totalNetSalary: totalNetSalary.toFixed(2), month: month || currentDate.toISOString().slice(0, 7) } });
+  } catch (error) {
+    console.error('Error in getTotalMonthlyPayroll:', error);
+    return res.status(500).json({ status: 'error', message: 'Failed to retrieve total monthly payroll', error: error.message });
+  }
+};
 module.exports = {
   createPayroll,
   getAllPayrolls,
@@ -333,5 +381,6 @@ module.exports = {
   getAllEmployeeOtForLastMonth,
   getEmployeeOtForLastMonth,
   getPayrollByEmployeeId,
-  getAllPayroll
+  getAllPayroll,
+  getTotalMonthlyPayroll
 };

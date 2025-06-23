@@ -76,6 +76,7 @@ router.get('/cal_payrolls', payrollController.getAllPayroll);
 router.get('/cal_payrolls/:employeeId', payrollController.getPayrollByEmployeeId);
 router.get('/payrolls_total_ot', payrollController.getAllEmployeeOtForLastMonth);
 router.get('/payrolls_total_ot/:id', payrollController.getEmployeeOtForLastMonth);
+router.get('/payrolls_total_monthly', payrollController.getTotalMonthlyPayroll);
 
 router.post('/special-allowances', specialAllowanceController.createSpecialAllowance);
 router.get('/special-allowances', specialAllowanceController.getAllSpecialAllowances);

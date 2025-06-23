@@ -164,7 +164,7 @@ const getEmployeeOvertimeByMonth = async (req, res) => {
       }
       startDate = new Date(`${year}-${monthNum}-01`);
     } else {
-      const currentDate = new Date(); // 03:50 PM +07, 23 ມິຖຸນາ 2025
+      const currentDate = new Date(); // 10:00 PM +07, 23 ມິຖຸນາ 2025
       const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
       startDate = new Date(`${currentMonth}-01`);
     }
@@ -179,6 +179,7 @@ const getEmployeeOvertimeByMonth = async (req, res) => {
           [Op.lt]: endDate,
         },
       },
+      include: [{ model: Employee, as: 'employee', attributes: ['name'] }], // ເພີ່ມການເຊື່ອມຕໍ່ກັບ Employee ແລະດຶງ name
       attributes: ['ot'], // ດຶງພຽງແຕ່ ot
     });
 
@@ -194,6 +195,7 @@ const getEmployeeOvertimeByMonth = async (req, res) => {
 
     return res.status(200).json({
       employeeId: parsedId,
+      name: overtimeRecord.employee ? overtimeRecord.employee.name : 'Unknown', // ສົ່ງຊື່ພະນັກງານ
       ot: otValue.toFixed(2), // ປັບຮູບແບບເປັນ string 2 ຕົວເລກທົດສະຖານ
     });
   } catch (error) {
