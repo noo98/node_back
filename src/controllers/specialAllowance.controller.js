@@ -143,11 +143,71 @@ const getSpecialAllowanceByEmployeeId = async (req, res) => {
     return res.status(500).json({ error: error.message });
   }
 };
+
+// Get employee overtime by month
+const getEmployeeOvertimeByMonth = async (req, res) => {
+  try {
+    const { employeeId } = req.params; // ໃຊ້ /emp_ot/:employeeId
+    const { month } = req.query; // ດຶງ month ຈາກ query parameter
+    const parsedId = parseInt(employeeId, 10);
+
+    if (isNaN(parsedId)) {
+      return res.status(400).json({ error: 'Invalid employee ID' });
+    }
+
+    // ກຳນົດຊ່ວງເດືອນຈາກ month ຫຼືໃຊ້ເດືອນປະຈຸບັນ
+    let startDate, endDate;
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
+        return res.status(400).json({ error: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
+      }
+      startDate = new Date(`${year}-${monthNum}-01`);
+    } else {
+      const currentDate = new Date(); // 03:50 PM +07, 23 ມິຖຸນາ 2025
+      const currentMonth = currentDate.toISOString().slice(0, 7); // 2025-06
+      startDate = new Date(`${currentMonth}-01`);
+    }
+    endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1);
+
+    const overtimeRecord = await SpecialAllowance.findOne({
+      where: {
+        employee_id: parsedId,
+        created_at: {
+          [Op.gte]: startDate,
+          [Op.lt]: endDate,
+        },
+      },
+      attributes: ['ot'], // ດຶງພຽງແຕ່ ot
+    });
+
+    if (!overtimeRecord || overtimeRecord.ot === null || overtimeRecord.ot === undefined) {
+      return res.status(404).json({ error: 'No overtime record found for this employee' });
+    }
+
+    // ປັບປະເພດຂອງ ot ເປັນເລກ ແລະໃຊ້ toFixed
+    const otValue = Number(overtimeRecord.ot);
+    if (isNaN(otValue)) {
+      return res.status(500).json({ error: 'Invalid ot value' });
+    }
+
+    return res.status(200).json({
+      employeeId: parsedId,
+      ot: otValue.toFixed(2), // ປັບຮູບແບບເປັນ string 2 ຕົວເລກທົດສະຖານ
+    });
+  } catch (error) {
+    console.error('Error in getEmployeeOvertimeByMonth:', error);
+    return res.status(500).json({ error: error.message });
+  }
+};
+
 module.exports = {
   createSpecialAllowance,
   getAllSpecialAllowances,
   getSpecialAllowanceById,
   updateSpecialAllowance,
   deleteSpecialAllowance,
-  getSpecialAllowanceByEmployeeId
+  getSpecialAllowanceByEmployeeId,
+  getEmployeeOvertimeByMonth
 };
