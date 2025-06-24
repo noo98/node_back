@@ -24,87 +24,59 @@ const createPayroll = async (req, res) => {
 // Get all payroll records with employee and special allowance details
 const getAllPayrolls = async (req, res) => {
   try {
+    const { month, employee_id } = req.query;
+    const whereClause = {};
+
+    // ✅ Filter by month (format: YYYY-MM)
+    if (month) {
+      const [year, monthNum] = month.split('-');
+      const yearNum = parseInt(year);
+      const monthInt = parseInt(monthNum);
+
+      if (!yearNum || !monthInt || isNaN(yearNum) || isNaN(monthInt) || monthInt < 1 || monthInt > 12) {
+        return res.status(400).json({
+          status: 'error',
+          message: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)',
+        });
+      }
+
+      const startDate = new Date(yearNum, monthInt - 1, 1);
+      const endDate = new Date(yearNum, monthInt, 1);
+
+      whereClause.payment_date = {
+        [Op.gte]: startDate,
+        [Op.lt]: endDate,
+      };
+    }
+
+    // ✅ Filter by employee_id
+    if (employee_id) {
+      whereClause.employee_id = employee_id;
+    }
+
     const payrolls = await Payroll.findAll({
+      where: whereClause,
       include: [
-        { model: Employee, as: 'employee', attributes: ['employee_id', 'name'] },
-        { model: SpecialAllowance, as: 'specialAllowance', attributes: ['special_allowance_id', 'bonus_money', 'tigh_money', 'food_money', 'ot'] }
-      ]
+        {
+          model: Employee,
+          as: 'employee',
+          attributes: ['employee_id', 'name'],
+        },
+        {
+          model: SpecialAllowance,
+          as: 'specialAllowance',
+          attributes: ['special_allowance_id', 'bonus_money', 'tigh_money', 'food_money', 'ot'],
+        },
+      ],
     });
+
     res.status(200).json({ status: 'success', data: payrolls });
   } catch (err) {
     res.status(500).json({ status: 'error', message: err.message });
   }
 };
 
-const getAllPayroll = async (req, res) => {
-  try {
-    console.log('Params:', req.params); 
-    const currentDate = new Date(); // 10:40 PM +07, 16 ມິຖຸນາ 2025
-    const { month } = req.query; // ດຶງ month ຈາກ query parameter
-    let whereClause = {};
 
-    // ກຳນົດ whereClause ຕາມ month ຖ້າມີ
-    if (month) {
-      const [year, monthNum] = month.split('-');
-      if (!year || !monthNum || isNaN(year) || isNaN(monthNum) || monthNum < 1 || monthNum > 12) {
-        return res.status(400).json({ status: 'error', message: 'Invalid month format. Use YYYY-MM (e.g., 2025-06)' });
-      }
-      const startDate = new Date(`${year}-${monthNum}-01`);
-      const endDate = new Date(startDate);
-      endDate.setMonth(endDate.getMonth() + 1);
-      whereClause = {
-        payment_date: {
-          [Op.gte]: startDate,
-          [Op.lt]: endDate,
-        },
-      };
-    } else {
-      // ຖ້າບໍ່ມີ month, ໃຊ້ເດືອນປະຈຸບັນ (2025-06)
-      const currentMonth = currentDate.toISOString().slice(0, 7);
-      whereClause = {
-        payment_date: {
-          [Op.gte]: new Date(`${currentMonth}-01`),
-          [Op.lt]: new Date(new Date(`${currentMonth}-01`).setMonth(new Date(`${currentMonth}-01`).getMonth() + 1)),
-        },
-      };
-    }
-
-    const payrolls = await Payroll.findAll({
-      where: whereClause,
-      include: [
-        { model: Employee, as: 'employee', attributes: ['employee_id', 'name'] },
-        { model: SpecialAllowance, as: 'specialAllowance', attributes: ['special_allowance_id', 'bonus_money', 'tigh_money', 'food_money', 'ot'] }
-      ],
-    });
-
-    if (!payrolls || payrolls.length === 0) {
-      return res.status(404).json({ status: 'error', message: 'No payroll records found for the current month' });
-    }
-
-    const payrollsWithCalculatedNet = await Promise.all(payrolls.map(async (payroll) => {
-      const { employee_id, base_salary, cut_money, specialAllowance } = payroll;
-      const paymentDate = new Date(payroll.payment_date);
-
-      const calculatedResult = await calculatePayroll(employee_id, paymentDate, {
-        bonusMoney: specialAllowance?.bonus_money || 0,
-        tighMoney: specialAllowance?.tigh_money || 0,
-        foodMoney: specialAllowance?.food_money || 0,
-        ot: specialAllowance?.ot || 0,
-        cutMoney: cut_money || 0,
-      });
-
-      return {
-        ...payroll.toJSON(),
-        net_salary: calculatedResult.net_salary || payroll.net_salary,
-      };
-    }));
-
-    return res.status(200).json({ status: 'success', data: payrollsWithCalculatedNet });
-  } catch (error) {
-    console.error('Error in getAllPayroll:', error);
-    return res.status(500).json({ status: 'error', message: 'Failed to retrieve payroll data', error: error.message });
-  }
-};
 // Get a payroll record by ID with employee and special allowance details
 const getPayrollById = async (req, res) => {
   try {
@@ -381,6 +353,5 @@ module.exports = {
   getAllEmployeeOtForLastMonth,
   getEmployeeOtForLastMonth,
   getPayrollByEmployeeId,
-  getAllPayroll,
   getTotalMonthlyPayroll
 };
